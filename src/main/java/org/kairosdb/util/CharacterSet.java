@@ -20,20 +20,49 @@ import java.util.regex.Pattern;
 
 public class CharacterSet
 {
-	private static final Pattern regex = Pattern.compile("^[a-zA-Z0-9\\-\\./_]*$");
+  private static CharacterSet INTERNAL_CHARACTER_SET;
+  private static final String DEFAULT_REGEX_PATTERN = "^[a-zA-Z0-9\\-\\./_]*$";
+  private final Pattern regex;
 
-	private CharacterSet()
-	{
-	}
+  private CharacterSet(String regexPattern)
+  {
+    regex = Pattern.compile(regexPattern);
+  }
 
-	/**
-	 * Returns true if the specified string contains a valid set of characters
-	 * @param s string to test
-	 * @return true if all characters in the string are valid
-	 */
-	public static boolean isValid(String s)
-	{
-		Matcher matcher = regex.matcher(s);
-		return matcher.matches();
-	}
+  /**
+   * Static wrapper for internal version of isValid
+   */
+  public static boolean isValid(String s)
+  {
+    return provideInternalCharacterSet().isValidInternal(s);
+  }
+
+  /**
+   * Returns true if the specified string contains a valid set of characters
+   * @param s string to test
+   * @return true if all characters in the string are valid
+   */
+  private boolean isValidInternal(String s)
+  {
+    Matcher matcher = regex.matcher(s);
+    return matcher.matches();
+  }
+
+  private static CharacterSet provideInternalCharacterSet() {
+    if (INTERNAL_CHARACTER_SET == null) {
+      INTERNAL_CHARACTER_SET = newCharacterSet();
+    }
+    return INTERNAL_CHARACTER_SET;
+  }
+
+  /**
+   * Factory method for creating a CharacterSet object with a command line configurable pattern
+   */
+  private static CharacterSet newCharacterSet() {
+    String regexPattern = System.getProperty("character.set.regex.pattern");
+    if (regexPattern == null || regexPattern.isEmpty()) {
+      return new CharacterSet(DEFAULT_REGEX_PATTERN);
+    }
+    return new CharacterSet(regexPattern);
+  }
 }
