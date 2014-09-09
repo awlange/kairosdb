@@ -15,18 +15,25 @@
  */
 package org.kairosdb.util;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class CharacterSet
 {
-  private static CharacterSet INTERNAL_CHARACTER_SET;
-  private static final String DEFAULT_REGEX_PATTERN = "^[a-zA-Z0-9\\-\\./_]*$";
-  private final Pattern regex;
+  private static final Logger log = LoggerFactory.getLogger(CharacterSet.class);
 
-  private CharacterSet(String regexPattern)
+  private static final String CHARACTER_SET_REGEX_PATTERN = "kairosdb.character.set.regex.pattern";
+  private static CharacterSet internalCharacterSet;
+  private Pattern regex;
+
+  private CharacterSet()
   {
-    regex = Pattern.compile(regexPattern);
   }
 
   /**
@@ -48,21 +55,42 @@ public class CharacterSet
     return matcher.matches();
   }
 
+  /**
+   * Provides a static CharacterSet, which is used by isValid.
+   * Creates a new CharacterSet object only on first pass.
+   * @return the static CharacterSet
+   */
   private static CharacterSet provideInternalCharacterSet() {
-    if (INTERNAL_CHARACTER_SET == null) {
-      INTERNAL_CHARACTER_SET = newCharacterSet();
+    if (internalCharacterSet == null) {
+      internalCharacterSet = newCharacterSet();
     }
-    return INTERNAL_CHARACTER_SET;
+    return internalCharacterSet;
   }
 
   /**
-   * Factory method for creating a CharacterSet object with a command line configurable pattern
+   * Factory method for creating a CharacterSet object with a configurable pattern
    */
   private static CharacterSet newCharacterSet() {
-    String regexPattern = System.getProperty("character.set.regex.pattern");
-    if (regexPattern == null || regexPattern.isEmpty()) {
-      return new CharacterSet(DEFAULT_REGEX_PATTERN);
+    CharacterSet cs = new CharacterSet();
+    try {
+      cs.setPatternFromConfig();
+    } catch (IOException ex) {
+      // ignore for now
     }
-    return new CharacterSet(regexPattern);
+    return cs;
+  }
+
+  /**
+   * Read the regex pattern for validation from kairosdb.properties file and set
+   */
+  private void setPatternFromConfig() throws IOException {
+    Properties props = new Properties();
+    InputStream is = getClass().getClassLoader().getResourceAsStream("kairosdb.properties");
+    props.load(is);
+    is.close();
+
+    String regexPattern = props.getProperty(CHARACTER_SET_REGEX_PATTERN);
+    log.info("CharacterSet validation regex pattern: {}", regexPattern);
+    regex = Pattern.compile(regexPattern);
   }
 }
